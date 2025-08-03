@@ -1,86 +1,25 @@
 # server/connection_handler.py
+import socket
+import threading
+from .client_session import ClientSession
 
-import mysql.connector
+class ConnectionHandler:
+    def __init__(self, host='127.0.0.1', port=9000):
+        self.host = host
+        self.port = port
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-# Cấu hình thông tin kết nối đến cơ sở dữ liệu MySQL
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "root",
-    "password": "",        # Nhập mật khẩu nếu có
-    "database": "pyctalk", # Tên cơ sở dữ liệu của bạn
-    "auth_plugin": "mysql_native_password",
-    "autocommit": True,
-    "charset": "utf8mb4",
-    "collation": "utf8mb4_unicode_ci"
-}
+    def start(self):
+        self.server_socket.bind((self.host, self.port))
+        self.server_socket.listen()
+        print(f"📡 Server listening on {self.host}:{self.port}")
 
-def get_connection():
-    try:
-        # Thử kết nối với cấu hình mặc định
-        conn = mysql.connector.connect(**DB_CONFIG)
-        return conn
-    except mysql.connector.Error as err:
-        if "Authentication plugin" in str(err):
-            print(f"[THÔNG BÁO] Thử kết nối với phương thức khác...")
-            try:
-                # Thử kết nối không có auth_plugin
-                config_alt = DB_CONFIG.copy()
-                config_alt.pop('auth_plugin', None)
-                conn = mysql.connector.connect(**config_alt)
-                return conn
-            except mysql.connector.Error as err2:
-                print(f"[LỖI] Không thể kết nối MySQL: {err2}")
-                return None
-        else:
-            print(f"[LỖI] Không thể kết nối MySQL: {err}")
-            return None
-
-def test_connection():
-    """Kiểm tra kết nối và hiển thị danh sách bảng trong database"""
-    conn = get_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
+        while True:
+            client_socket, client_address = self.server_socket.accept()
+            print(f"🔗 New connection from {client_address}")
             
-            # Hiển thị danh sách bảng
-            cursor.execute("SHOW TABLES")
-            tables = cursor.fetchall()
-            print("✅ Kết nối thành công!")
-            print(f"📋 Danh sách bảng trong database '{DB_CONFIG['database']}':")
-            for table in tables:
-                print(f"  - {table[0]}")
-            
-            cursor.close()
-            conn.close()
-            return True
-        except mysql.connector.Error as err:
-            print(f"[LỖI] Không thể truy vấn database: {err}")
-            return False
-    else:
-        print("❌ Không thể kết nối đến database")
-        return False
-
-def query_data(query, params=None):
-    """Thực hiện truy vấn SELECT và trả về kết quả"""
-    conn = get_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            
-            results = cursor.fetchall()
-            cursor.close()
-            conn.close()
-            return results
-        except mysql.connector.Error as err:
-            print(f"[LỖI] Truy vấn thất bại: {err}")
-            return None
-    return None
-
-# Test khi chạy file trực tiếp
-if __name__ == "__main__":
-    test_connection()
+            client_session = ClientSession(client_socket, client_address)
+            thread = threading.Thread(target=client_session.run)
+            thread.daemon = True
+            thread.start()
+server = ConnectionHandler()
