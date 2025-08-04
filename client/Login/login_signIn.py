@@ -30,6 +30,10 @@ class LoginWindow(QtWidgets.QMainWindow):
             QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập đầy đủ username và password")
             return
 
+        # Đảm bảo disconnect trước khi kết nối mới
+        if self.client.running:
+            self.client.disconnect()
+
         # xử lý login qua hàm connect + send_json
         if not self.client.connect():
             QMessageBox.critical(self, "Lỗi", "Không thể kết nối đến server")
@@ -44,6 +48,9 @@ class LoginWindow(QtWidgets.QMainWindow):
 
         if response and response.get("success"):
             print("✅ Đăng nhập thành công.")
+            # Lưu thông tin user
+            self.client.user_id = response.get("user_id")
+            self.client.username = username
             # Client đã tự động lưu user_id và username
             self.client.start_ping(username)
             self.goto_main_window()
@@ -100,12 +107,14 @@ class RegisterWindow(QtWidgets.QMainWindow):
 
         if response and response.get("success"):
             print("✅ Đăng ký thành công.")
+            self.client.disconnect()  # Disconnect after successful registration
             self.login_window = LoginWindow()  # Giữ tham chiếu để không bị huỷ
             self.login_window.show()
             self.close()
         else:
             self.client.disconnect()
-            QMessageBox.warning(self, "Thất bại", "Tên đăng nhập hoặc mật khẩu không đúng")
+            error_message = response.get("message", "Đăng ký thất bại") if response else "Không nhận được phản hồi từ server"
+            QMessageBox.warning(self, "Thất bại", error_message)
             
     def open_login_window(self):
         self.login_window = LoginWindow()
