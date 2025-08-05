@@ -5,7 +5,7 @@ from UI.mainClient import Ui_MainWindow  # Đổi 'main_client' thành file .py 
 from UI.loginUI import Ui_LoginWindow  # Đổi 'login_ui' thành file .py giao diện bạn tạo từ .ui
 from UI.signinUI import Ui_SignInWindow  # File giao diện đăng ký
 from Request.handle_request_client import PycTalkClient
-
+from Add_friend.suggestion import SuggestionFriendWindow 
 
 class LoginWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -44,6 +44,10 @@ class LoginWindow(QtWidgets.QMainWindow):
 
         if response and response.get("success"):
             print("✅ Đăng nhập thành công.")
+            # Sau khi đăng nhập thành công:
+            self.suggestion_window = SuggestionFriendWindow(username)
+            self.suggestion_window.show()
+            
             self.client.start_ping(username)
             self.goto_main_window(username)
         else:
