@@ -93,6 +93,19 @@ class ClientSession:
                 print(f"🔒 {self.client_address}({data['data']['username']}) yêu cầu đăng xuất.")
                 self.send_response({"success": True, "message": "Đã đăng xuất."})
                 self.running = False
+            elif action == "get_suggestions":
+                # Trả về danh sách gợi ý kết bạn (giả lập)
+                username = data["data"]["username"]
+                print(f"📋 {self.client_address} yêu cầu gợi ý kết bạn cho {username}")
+                suggestions = ["user1", "user2", "user3", "user4", "user5"]  # Danh sách giả lập
+                self.send_response({"status": "ok", "data": suggestions})
+            elif action == "add_friend":
+                # Xử lý yêu cầu kết bạn
+                from_user = data["data"]["from_user"]
+                to_user = data["data"]["to_user"]
+                print(f"👥 {self.client_address} yêu cầu kết bạn: {from_user} -> {to_user}")
+                # Giả lập thành công
+                self.send_response({"status": "ok", "message": f"Đã gửi lời mời kết bạn từ {from_user} đến {to_user}"})
             elif action == "send_message":
                 pass  # handle_send_message(data)
             elif action == "create_group":

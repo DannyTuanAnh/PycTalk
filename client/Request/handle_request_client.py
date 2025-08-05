@@ -83,8 +83,8 @@ class PycTalkClient:
         response = self.send_json(request)
         if response and response.get("success"):
             print("✅ Đăng kí thành công, giữ kết nối chờ các lệnh khác...")
-            self.start_ping()
-            self.idle_mode()
+            self.start_ping(username)
+            self.idle_mode(username)
         else:
             self.disconnect()
 
@@ -102,16 +102,17 @@ class PycTalkClient:
         if response and response.get("success"):
             print("✅ Đăng nhập thành công, giữ kết nối chờ các lệnh khác...")
             self.start_ping(username)
-            self.idle_mode()
+            self.idle_mode(username)
         else:
             self.disconnect()
 
-    def idle_mode(self):
+    def idle_mode(self, username=None):
         try:
             while self.running:
                 cmd = input("Nhập lệnh (logout / exit): ").strip().lower()
                 if cmd == "logout":
-                    self.send_json({"action": "logout", "data": {"username": username}})
+                    if username:
+                        self.send_json({"action": "logout", "data": {"username": username}})
                     print("🚪 Đã đăng xuất.")
                     break
                 elif cmd == "exit":
@@ -122,22 +123,25 @@ class PycTalkClient:
         finally:
             self.disconnect()
 
-    def start_ping(self,username):
+    def start_ping(self, username):
         # Gửi ping đều đặn để giữ kết nối
         def ping_loop():
-            while self.running:
+            while self.ping_running and self.running:
                 try:
-                    time.sleep(15)  # mỗi 15–30s
-                    self.send_json({"action": "ping", "data": {"username": username}})
+                    time.sleep(15)  # mỗi 15s
+                    if self.ping_running and self.running:
+                        self.send_json({"action": "ping", "data": {"username": username}})
                 except Exception as e:
                     print(f"⚠️ Lỗi ping: {e}")
                     break
+                    
         # Nếu đã có thread ping đang chạy thì không tạo thêm
         if self.ping_running:
             return
 
-        thread = threading.Thread(target=ping_loop, daemon=True)
-        thread.start()
+        self.ping_running = True
+        self.ping_thread = threading.Thread(target=ping_loop, daemon=True)
+        self.ping_thread.start()
         
     def stop_ping(self):
         """
