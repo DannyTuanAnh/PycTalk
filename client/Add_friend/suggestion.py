@@ -2,13 +2,13 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QPushButton, QLabel, QHBoxLayout
 )
 from PyQt6.QtCore import Qt
-import socket
-import json
+from Request.handle_request_client import PycTalkClient
 
 class SuggestionFriendWindow(QWidget):
     def __init__(self, username):
         super().__init__()
         self.username = username
+        self.client = PycTalkClient()
         self.setWindowTitle("Gợi ý kết bạn")
         self.setStyleSheet("background-color: #1e1e1e; color: white;")
         self.resize(400, 600)
@@ -20,21 +20,26 @@ class SuggestionFriendWindow(QWidget):
     def load_suggestions(self):
         # Kết nối đến server và lấy danh sách gợi ý
         try:
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(('127.0.0.1', 9000))
+            if not self.client.connect():
+                print("❌ Không thể kết nối đến server để lấy gợi ý")
+                return
+                
             request = {
                 "action": "get_suggestions",
-                "username": self.username
+                "data": {"username": self.username}
             }
-            client.send(json.dumps(request).encode())
-            response = json.loads(client.recv(8192).decode())
-            client.close()
-
-            if response["status"] == "ok":
-                for user in response["data"]:
+            response = self.client.send_json(request)
+            
+            if response and response.get("status") == "ok":
+                for user in response.get("data", []):
                     self.add_user_item(user)
+            else:
+                print("❌ Không thể lấy danh sách gợi ý từ server")
+                
         except Exception as e:
-            print("Error:", e)
+            print(f"❌ Lỗi khi lấy gợi ý: {e}")
+        finally:
+            self.client.disconnect()
 
     def add_user_item(self, user):
         item = QListWidgetItem()
@@ -56,17 +61,26 @@ class SuggestionFriendWindow(QWidget):
 
     def send_friend_request(self, to_user):
         try:
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(('127.0.0.1', 9000))
+            client = PycTalkClient()
+            if not client.connect():
+                print("❌ Không thể kết nối đến server để gửi lời mời kết bạn")
+                return
+                
             request = {
                 "action": "add_friend",
-                "from_user": self.username,
-                "to_user": to_user
+                "data": {
+                    "from_user": self.username,
+                    "to_user": to_user
+                }
             }
-            client.send(json.dumps(request).encode())
-            response = json.loads(client.recv(4096).decode())
-            client.close()
-            if response["status"] == "ok":
-                print(f"Đã gửi lời mời kết bạn đến {to_user}")
+            response = client.send_json(request)
+            
+            if response and response.get("status") == "ok":
+                print(f"✅ Đã gửi lời mời kết bạn đến {to_user}")
+            else:
+                print(f"❌ Không thể gửi lời mời kết bạn đến {to_user}")
+                
         except Exception as e:
-            print("Kết bạn thất bại:", e)
+            print(f"❌ Kết bạn thất bại: {e}")
+        finally:
+            client.disconnect()
