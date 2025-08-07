@@ -154,7 +154,9 @@ class ClientSession:
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
                 admin_id = data["data"]["admin_id"]
+                print(f"🔧 Adding member: group_id={group_id}, user_id={user_id}, admin_id={admin_id}")
                 result = group_handler.add_member_to_group(group_id, user_id, admin_id)
+                print(f"🔧 Add member result: {result}")
                 self.send_response(result)
                 
             elif action == "send_group_message":
@@ -179,7 +181,9 @@ class ClientSession:
             elif action == "get_group_members":
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
+                print(f"🔧 Getting group members: group_id={group_id}, user_id={user_id}")
                 result = group_handler.get_group_members(group_id, user_id)
+                print(f"🔧 Get group members result: {result}")
                 self.send_response(result)
                 
             elif action == "send_message":

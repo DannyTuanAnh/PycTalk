@@ -49,16 +49,20 @@ class GroupHandler:
     def add_member_to_group(self, group_id: int, user_id: int, admin_id: int) -> dict:
         """Thêm thành viên vào nhóm"""
         try:
+            print(f"🔧 Starting add_member_to_group: group_id={group_id}, user_id={user_id}, admin_id={admin_id}")
+            
             # Kiểm tra admin có quyền (là thành viên của nhóm)
             admin_check = db.fetch_one(
                 "SELECT * FROM group_members WHERE group_id = %s AND user_id = %s",
                 (group_id, admin_id)
             )
+            print(f"🔧 Admin check result: {admin_check}")
             if not admin_check:
                 return {"success": False, "message": "Bạn không có quyền thêm thành viên vào nhóm này"}
             
             # Kiểm tra user tồn tại
             user_exists = db.fetch_one("SELECT id FROM users WHERE id = %s", (user_id,))
+            print(f"🔧 User exists check: {user_exists}")
             if not user_exists:
                 return {"success": False, "message": "User không tồn tại"}
             
@@ -67,6 +71,7 @@ class GroupHandler:
                 "SELECT * FROM group_members WHERE group_id = %s AND user_id = %s",
                 (group_id, user_id)
             )
+            print(f"🔧 Member exists check: {member_exists}")
             if member_exists:
                 return {"success": False, "message": "User đã là thành viên của nhóm"}
             
@@ -75,10 +80,12 @@ class GroupHandler:
                 "INSERT INTO group_members (group_id, user_id) VALUES (%s, %s)",
                 (group_id, user_id)
             )
+            print(f"🔧 Member added successfully")
             
             return {"success": True, "message": "Thêm thành viên thành công"}
             
         except Exception as e:
+            print(f"🔧 Error in add_member_to_group: {str(e)}")
             return {"success": False, "message": f"Lỗi thêm thành viên: {str(e)}"}
     
     def send_group_message(self, sender_id: int, group_id: int, content: str) -> dict:
@@ -201,11 +208,14 @@ class GroupHandler:
     def get_group_members(self, group_id: int, user_id: int) -> dict:
         """Lấy danh sách thành viên nhóm"""
         try:
+            print(f"🔧 Starting get_group_members: group_id={group_id}, user_id={user_id}")
+            
             # Kiểm tra user có trong nhóm không
             member_check = db.fetch_one(
                 "SELECT * FROM group_members WHERE group_id = %s AND user_id = %s",
                 (group_id, user_id)
             )
+            print(f"🔧 Member check result: {member_check}")
             if not member_check:
                 return {"success": False, "message": "Bạn không phải thành viên của nhóm này"}
             
@@ -217,8 +227,9 @@ class GroupHandler:
                    WHERE gm.group_id = %s""",
                 (group_id,)
             )
+            print(f"🔧 Found {len(members)} members: {members}")
             
-            return {
+            result = {
                 "success": True,
                 "members": [
                     {
@@ -229,8 +240,11 @@ class GroupHandler:
                     for member in members
                 ]
             }
+            print(f"🔧 Returning result: {result}")
+            return result
             
         except Exception as e:
+            print(f"🔧 Error in get_group_members: {str(e)}")
             return {"success": False, "message": f"Lỗi lấy danh sách thành viên: {str(e)}"}
 
 # Instance để sử dụng
