@@ -1,6 +1,7 @@
 import json
-from server.Login_server.RegisterHandle import register
-from server.Login_server.LoginHandle import login
+from .Login_server.RegisterHandle import register
+from .Login_server.LoginHandle import login
+from .HandleAddFriend.friend_handler import friend_handler
 
 import json
 import socket
@@ -93,44 +94,98 @@ class ClientSession:
                 print(f"🔒 {self.client_address}({data['data']['username']}) yêu cầu đăng xuất.")
                 self.send_response({"success": True, "message": "Đã đăng xuất."})
                 self.running = False
+                
+            # ===== FRIEND ACTIONS =====
+            elif action == "get_suggestions":
+                username = data["data"]["username"]
+                print(f"📋 {self.client_address} yêu cầu gợi ý kết bạn cho {username}")
+                result = friend_handler.get_suggestions(username)
+                self.send_response(result)
+                
+            elif action == "add_friend":
+                from_user = data["data"]["from_user"]
+                to_user = data["data"]["to_user"]
+                print(f"👥 {self.client_address} yêu cầu kết bạn: {from_user} -> {to_user}")
+                result = friend_handler.add_friend(from_user, to_user)
+                self.send_response(result)
+                
+            elif action == "get_friends":
+                username = data["data"]["username"]
+                print(f"👥 {self.client_address} yêu cầu danh sách bạn bè cho {username}")
+                result = friend_handler.get_friends(username)
+                self.send_response(result)
+                
+            elif action == "get_friend_requests":
+                username = data["data"]["username"]
+                print(f"📩 {self.client_address} yêu cầu lời mời kết bạn cho {username}")
+                result = friend_handler.get_friend_requests(username)
+                self.send_response(result)
+                
+            elif action == "accept_friend":
+                username = data["data"]["username"]
+                from_user = data["data"]["from_user"]
+                print(f"✅ {self.client_address} chấp nhận lời mời kết bạn: {username} <- {from_user}")
+                result = friend_handler.accept_friend(username, from_user)
+                self.send_response(result)
+                
+            elif action == "reject_friend":
+                username = data["data"]["username"]
+                from_user = data["data"]["from_user"]
+                print(f"❌ {self.client_address} từ chối lời mời kết bạn: {username} <- {from_user}")
+                result = friend_handler.reject_friend(username, from_user)
+                self.send_response(result)
+                
+            elif action == "remove_friend":
+                username = data["data"]["username"]
+                friend_name = data["data"]["friend_name"]
+                print(f"🗑️ {self.client_address} xóa bạn bè: {username} x {friend_name}")
+                result = friend_handler.remove_friend(username, friend_name)
+                self.send_response(result)
+                
             # ===== GROUP CHAT ACTIONS =====
             elif action == "create_group":
                 group_name = data["data"]["group_name"]
                 created_by = data["data"]["user_id"]
-                result = group_handler.create_group(group_name, created_by)
-                self.send_response(result)
+                # result = group_handler.create_group(group_name, created_by)
+                # self.send_response(result)
+                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
                 
             elif action == "add_member_to_group":
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
                 admin_id = data["data"]["admin_id"]
-                result = group_handler.add_member_to_group(group_id, user_id, admin_id)
-                self.send_response(result)
+                # result = group_handler.add_member_to_group(group_id, user_id, admin_id)
+                # self.send_response(result)
+                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
                 
             elif action == "send_group_message":
                 sender_id = data["data"]["sender_id"]
                 group_id = data["data"]["group_id"]
                 content = data["data"]["content"]
-                result = group_handler.send_group_message(sender_id, group_id, content)
-                self.send_response(result)
+                # result = group_handler.send_group_message(sender_id, group_id, content)
+                # self.send_response(result)
+                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
                 
             elif action == "get_group_messages":
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
                 limit = data["data"].get("limit", 50)
-                result = group_handler.get_group_messages(group_id, user_id, limit)
-                self.send_response(result)
+                # result = group_handler.get_group_messages(group_id, user_id, limit)
+                # self.send_response(result)
+                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
                 
             elif action == "get_user_groups":
                 user_id = data["data"]["user_id"]
-                result = group_handler.get_user_groups(user_id)
-                self.send_response(result)
+                # result = group_handler.get_user_groups(user_id)
+                # self.send_response(result)
+                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
                 
             elif action == "get_group_members":
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
-                result = group_handler.get_group_members(group_id, user_id)
-                self.send_response(result)
+                # result = group_handler.get_group_members(group_id, user_id)
+                # self.send_response(result)
+                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
                 
             elif action == "send_message":
                 pass  # handle_send_message(data)

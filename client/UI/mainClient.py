@@ -86,6 +86,31 @@ class Ui_MainWindow(object):
         """)
         self.btnGroupChat.setObjectName("btnGroupChat")
         
+        # Friends Button
+        self.btnFriends = QtWidgets.QPushButton(parent=self.widget)
+        self.btnFriends.setGeometry(QtCore.QRect(100, 300, 120, 40))
+        font = QtGui.QFont()
+        font.setFamily("MS Shell Dlg 2")
+        font.setPointSize(10)
+        font.setBold(True)
+        self.btnFriends.setFont(font)
+        self.btnFriends.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3e8e41;
+            }
+        """)
+        self.btnFriends.setObjectName("btnFriends")
+        
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(parent=MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 26))
@@ -99,6 +124,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         self.btnLogout.clicked.connect(self.on_logout_clicked)
         self.btnGroupChat.clicked.connect(self.on_group_chat_clicked)
+        self.btnFriends.clicked.connect(self.on_friends_clicked)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -106,6 +132,7 @@ class Ui_MainWindow(object):
         self.label.setText(_translate("MainWindow", "PycTalk"))
         self.btnLogout.setText(_translate("MainWindow", "Logout"))
         self.btnGroupChat.setText(_translate("MainWindow", "Group Chat"))
+        self.btnFriends.setText(_translate("MainWindow", "Friends"))
 
     
     def on_logout_clicked(self):
@@ -133,6 +160,13 @@ class Ui_MainWindow(object):
         self.group_chat_window.show()
         self.group_chat_window.raise_()
         self.group_chat_window.activateWindow()
+    
+    def on_friends_clicked(self):
+        from Add_friend.friend import FriendManagementWindow
+        
+        # Tạo cửa sổ quản lý bạn bè
+        self.friends_window = FriendManagementWindow(self.username)
+        self.friends_window.show()
         
 
 
