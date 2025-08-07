@@ -62,7 +62,7 @@ class PycTalkClient:
             length_prefix = self.sock.recv(4)
             if not length_prefix:
                 print("⚠️ Server không phản hồi.")
-                return None
+                return
 
             response_length = int.from_bytes(length_prefix, 'big')
             response_data = b''
@@ -78,7 +78,6 @@ class PycTalkClient:
         except Exception as e:
             print(f"❌ Lỗi khi gửi/nhận dữ liệu: {e}")
             self.disconnect()
-            return None
 
     def register(self, username, password, email):
         if not self.connect():
@@ -112,9 +111,6 @@ class PycTalkClient:
         response = self.send_json(request)
         if response and response.get("success"):
             print("✅ Đăng nhập thành công, giữ kết nối chờ các lệnh khác...")
-            # Lưu thông tin user
-            self.user_id = response.get("user_id")
-            self.username = username
             self.start_ping(username)
             self.idle_mode()
         else:
@@ -125,7 +121,7 @@ class PycTalkClient:
             while self.running:
                 cmd = input("Nhập lệnh (logout / exit): ").strip().lower()
                 if cmd == "logout":
-                    self.send_json({"action": "logout", "data": {"username": self.username}})
+                    self.send_json({"action": "logout", "data": {"username": username}})
                     print("🚪 Đã đăng xuất.")
                     break
                 elif cmd == "exit":
@@ -163,7 +159,7 @@ class PycTalkClient:
         self.ping_running = False
         if self.ping_thread and self.ping_thread.is_alive():
             self.ping_thread.join(timeout=0.1)
-    
+            
     def get_user_id(self):
         """
         Lấy user_id của user đã đăng nhập
@@ -181,3 +177,4 @@ class PycTalkClient:
         Kiểm tra user đã đăng nhập chưa
         """
         return self.user_id is not None and self.username is not None
+

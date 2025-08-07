@@ -33,7 +33,7 @@ class LoginWindow(QtWidgets.QMainWindow):
         # Đảm bảo disconnect trước khi kết nối mới
         if self.client.running:
             self.client.disconnect()
-
+            
         # xử lý login qua hàm connect + send_json
         if not self.client.connect():
             QMessageBox.critical(self, "Lỗi", "Không thể kết nối đến server")
@@ -107,7 +107,6 @@ class RegisterWindow(QtWidgets.QMainWindow):
 
         if response and response.get("success"):
             print("✅ Đăng ký thành công.")
-            self.client.disconnect()  # Disconnect after successful registration
             self.login_window = LoginWindow()  # Giữ tham chiếu để không bị huỷ
             self.login_window.show()
             self.close()

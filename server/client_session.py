@@ -1,8 +1,9 @@
 import json
+from server.Login_server.RegisterHandle import register
+from server.Login_server.LoginHandle import login
+
+import json
 import socket
-from .Login_server.RegisterHandle import register
-from .Login_server.LoginHandle import login
-from .HandleGroupChat.group_handler import group_handler
 
 class ClientSession:
     def __init__(self, client_socket, client_address):
@@ -61,6 +62,12 @@ class ClientSession:
             print(f"❌ Không gửi được phản hồi cho {self.client_address}: {e}")
             self.running = False  # Tự dừng nếu không gửi được
 
+            
+    def send_response(self, response_dict):
+        response_json = json.dumps(response_dict).encode()
+        response_length = len(response_json).to_bytes(4, 'big')
+        self.client_socket.sendall(response_length + response_json)
+
     def handle_message(self, raw_data):
         try:
             data = json.loads(raw_data.decode())
@@ -86,7 +93,6 @@ class ClientSession:
                 print(f"🔒 {self.client_address}({data['data']['username']}) yêu cầu đăng xuất.")
                 self.send_response({"success": True, "message": "Đã đăng xuất."})
                 self.running = False
-                
             # ===== GROUP CHAT ACTIONS =====
             elif action == "create_group":
                 group_name = data["data"]["group_name"]
@@ -130,6 +136,7 @@ class ClientSession:
                 pass  # handle_send_message(data)
             else:
                 print(f"❓ Unknown action from {self.client_address}: {action}")
+
 
         except json.JSONDecodeError:
             print(f"❌ Invalid JSON from {self.client_address}")
