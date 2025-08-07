@@ -2,6 +2,7 @@ import json
 from .Login_server.RegisterHandle import register
 from .Login_server.LoginHandle import login
 from .HandleAddFriend.friend_handler import friend_handler
+from .HandleGroupChat.group_handler import group_handler
 
 import json
 import socket
@@ -146,46 +147,40 @@ class ClientSession:
             elif action == "create_group":
                 group_name = data["data"]["group_name"]
                 created_by = data["data"]["user_id"]
-                # result = group_handler.create_group(group_name, created_by)
-                # self.send_response(result)
-                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
+                result = group_handler.create_group(group_name, created_by)
+                self.send_response(result)
                 
             elif action == "add_member_to_group":
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
                 admin_id = data["data"]["admin_id"]
-                # result = group_handler.add_member_to_group(group_id, user_id, admin_id)
-                # self.send_response(result)
-                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
+                result = group_handler.add_member_to_group(group_id, user_id, admin_id)
+                self.send_response(result)
                 
             elif action == "send_group_message":
                 sender_id = data["data"]["sender_id"]
                 group_id = data["data"]["group_id"]
                 content = data["data"]["content"]
-                # result = group_handler.send_group_message(sender_id, group_id, content)
-                # self.send_response(result)
-                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
+                result = group_handler.send_group_message(sender_id, group_id, content)
+                self.send_response(result)
                 
             elif action == "get_group_messages":
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
                 limit = data["data"].get("limit", 50)
-                # result = group_handler.get_group_messages(group_id, user_id, limit)
-                # self.send_response(result)
-                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
+                result = group_handler.get_group_messages(group_id, user_id, limit)
+                self.send_response(result)
                 
             elif action == "get_user_groups":
                 user_id = data["data"]["user_id"]
-                # result = group_handler.get_user_groups(user_id)
-                # self.send_response(result)
-                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
+                result = group_handler.get_user_groups(user_id)
+                self.send_response(result)
                 
             elif action == "get_group_members":
                 group_id = data["data"]["group_id"]
                 user_id = data["data"]["user_id"]
-                # result = group_handler.get_group_members(group_id, user_id)
-                # self.send_response(result)
-                self.send_response({"status": "error", "message": "Group handler not implemented yet"})
+                result = group_handler.get_group_members(group_id, user_id)
+                self.send_response(result)
                 
             elif action == "send_message":
                 pass  # handle_send_message(data)

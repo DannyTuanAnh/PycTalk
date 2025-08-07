@@ -9,7 +9,7 @@ class GroupHandler:
         """Tạo nhóm chat mới"""
         try:
             # Kiểm tra user tồn tại
-            user_exists = db.fetch_one("SELECT User_id FROM users WHERE User_id = %s", (created_by,))
+            user_exists = db.fetch_one("SELECT id FROM users WHERE id = %s", (created_by,))
             if not user_exists:
                 return {"success": False, "message": "User không tồn tại"}
             
@@ -58,7 +58,7 @@ class GroupHandler:
                 return {"success": False, "message": "Bạn không có quyền thêm thành viên vào nhóm này"}
             
             # Kiểm tra user tồn tại
-            user_exists = db.fetch_one("SELECT User_id FROM users WHERE User_id = %s", (user_id,))
+            user_exists = db.fetch_one("SELECT id FROM users WHERE id = %s", (user_id,))
             if not user_exists:
                 return {"success": False, "message": "User không tồn tại"}
             
@@ -101,9 +101,9 @@ class GroupHandler:
             # Lấy thông tin tin nhắn vừa gửi
             message = db.fetch_one(
                 """SELECT gm.message_group_id, gm.sender_id, gm.group_id, gm.content, 
-                          gm.time_send, u.Username as sender_name
+                          gm.time_send, u.username as sender_name
                    FROM group_messages gm 
-                   JOIN users u ON gm.sender_id = u.User_id 
+                   JOIN users u ON gm.sender_id = u.id 
                    WHERE gm.sender_id = %s AND gm.group_id = %s 
                    ORDER BY gm.message_group_id DESC LIMIT 1""",
                 (sender_id, group_id)
@@ -142,9 +142,9 @@ class GroupHandler:
             # Lấy tin nhắn
             messages = db.fetch_all(
                 """SELECT gm.message_group_id, gm.sender_id, gm.group_id, gm.content, 
-                          gm.time_send, u.Username as sender_name
+                          gm.time_send, u.username as sender_name
                    FROM group_messages gm 
-                   JOIN users u ON gm.sender_id = u.User_id 
+                   JOIN users u ON gm.sender_id = u.id 
                    WHERE gm.group_id = %s 
                    ORDER BY gm.time_send DESC LIMIT %s""",
                 (group_id, limit)
@@ -174,10 +174,10 @@ class GroupHandler:
         """Lấy danh sách nhóm của user"""
         try:
             groups = db.fetch_all(
-                """SELECT gc.group_id, gc.group_name, gc.created_by, u.Username as creator_name
+                """SELECT gc.group_id, gc.group_name, gc.created_by, u.username as creator_name
                    FROM group_chat gc
                    JOIN group_members gm ON gc.group_id = gm.group_id
-                   JOIN users u ON gc.created_by = u.User_id
+                   JOIN users u ON gc.created_by = u.id
                    WHERE gm.user_id = %s""",
                 (user_id,)
             )
@@ -211,9 +211,9 @@ class GroupHandler:
             
             # Lấy danh sách thành viên
             members = db.fetch_all(
-                """SELECT u.User_id, u.Username, u.Email
+                """SELECT u.id, u.username, u.email
                    FROM users u
-                   JOIN group_members gm ON u.User_id = gm.user_id
+                   JOIN group_members gm ON u.id = gm.user_id
                    WHERE gm.group_id = %s""",
                 (group_id,)
             )
@@ -222,9 +222,9 @@ class GroupHandler:
                 "success": True,
                 "members": [
                     {
-                        "user_id": member["User_id"],
-                        "username": member["Username"],
-                        "email": member["Email"]
+                        "user_id": member["id"],
+                        "username": member["username"],
+                        "email": member["email"]
                     }
                     for member in members
                 ]
