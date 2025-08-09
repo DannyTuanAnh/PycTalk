@@ -51,8 +51,8 @@ class LoginWindow(QtWidgets.QMainWindow):
             # Lưu thông tin user
             self.client.user_id = response.get("user_id")
             self.client.username = username
-            # Client đã tự động lưu user_id và username
-            self.client.start_ping(username)
+            # Start ping without parameter (username is already stored in client)
+            self.client.start_ping()
             self.goto_main_window()
         else:
             self.client.disconnect()

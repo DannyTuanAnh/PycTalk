@@ -1,6 +1,31 @@
 import json
+import threading
+import time
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QLineEdit, QPushButton, QLabel, QListWidget, QListWidgetItem, QMessageBox, QInputDialog
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QLineEdit, QPushButton, QLabel, QListWidget, QListWidgetItem, QMessageBox, QInputDialog, QProgressBar
+from PyQt6.QtCore import QThread, pyqtSignal
+
+from PyQt6.QtCore import QThread, pyqtSignal
+
+class MessageSenderThread(QThread):
+    """Thread để gửi tin nhắn async, không block UI"""
+    message_sent = pyqtSignal(dict)  # Signal khi gửi thành công
+    error_occurred = pyqtSignal(str)  # Signal khi có lỗi
+    
+    def __init__(self, client, request_data):
+        super().__init__()
+        self.client = client
+        self.request_data = request_data
+        
+    def run(self):
+        try:
+            response = self.client.send_json(self.request_data)
+            if response:
+                self.message_sent.emit(response)
+            else:
+                self.error_occurred.emit("Không nhận được phản hồi từ server")
+        except Exception as e:
+            self.error_occurred.emit(f"Lỗi kết nối: {str(e)}")
 
 class GroupChatWindow(QDialog):
     def __init__(self, client, user_id, username):
@@ -9,6 +34,10 @@ class GroupChatWindow(QDialog):
         self.user_id = user_id
         self.username = username
         self.current_group = None
+        
+        # Threading management
+        self.message_sender_thread = None
+        
         self.setupUI()
         self.load_user_groups()
         
@@ -80,10 +109,16 @@ class GroupChatWindow(QDialog):
         self.message_input.returnPressed.connect(self.send_message)
         self.message_input.setEnabled(False)
         
-        send_btn = QPushButton("Gửi")
-        send_btn.clicked.connect(self.send_message)
-        send_btn.setEnabled(False)
-        send_btn.setStyleSheet("""
+        # Progress bar for sending status
+        self.send_progress = QProgressBar()
+        self.send_progress.setVisible(False)
+        self.send_progress.setRange(0, 0)  # Indeterminate progress
+        self.send_progress.setMaximumHeight(3)
+        
+        self.send_btn = QPushButton("Gửi")
+        self.send_btn.clicked.connect(self.send_message)
+        self.send_btn.setEnabled(False)
+        self.send_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2196F3;
                 color: white;
@@ -100,10 +135,9 @@ class GroupChatWindow(QDialog):
             }
         """)
         
-        self.send_btn = send_btn
         
         input_layout.addWidget(self.message_input)
-        input_layout.addWidget(send_btn)
+        input_layout.addWidget(self.send_btn)
         
         # Group actions
         actions_layout = QHBoxLayout()
@@ -129,6 +163,7 @@ class GroupChatWindow(QDialog):
         
         right_panel.addWidget(self.group_info_label)
         right_panel.addWidget(self.messages_area)
+        right_panel.addWidget(self.send_progress)  # Add progress bar
         right_panel.addLayout(input_layout)
         right_panel.addLayout(actions_layout)
         
@@ -137,6 +172,13 @@ class GroupChatWindow(QDialog):
         main_layout.addLayout(right_panel)
         
         self.setLayout(main_layout)
+    
+    def closeEvent(self, event):
+        """Cleanup khi đóng window"""
+        if self.message_sender_thread and self.message_sender_thread.isRunning():
+            self.message_sender_thread.quit()
+            self.message_sender_thread.wait(1000)  # Wait 1 second
+        super().closeEvent(event)
     
     def load_user_groups(self):
         """Load danh sách nhóm của user"""
@@ -149,19 +191,16 @@ class GroupChatWindow(QDialog):
             response = self.client.send_json(request)
             if response and response.get("success"):
                 self.groups_list.clear()
-                groups = response.get("groups", [])
-                for group in groups:
+                for group in response.get("groups", []):
                     item_text = f"{group['group_name']} (ID: {group['group_id']})"
-                    item = QListWidgetItem(item_text)
+                    item = QtWidgets.QListWidgetItem(item_text)
                     item.setData(QtCore.Qt.ItemDataRole.UserRole, group)
                     self.groups_list.addItem(item)
             else:
-                print("❌ Không thể tải danh sách nhóm")
-                QMessageBox.warning(self, "Lỗi", "Không thể tải danh sách nhóm")
-                
+                error_msg = response.get("message", "Không thể tải danh sách nhóm") if response else "Không có phản hồi từ server"
+                QMessageBox.warning(self, "Lỗi", error_msg)
         except Exception as e:
-            print(f"❌ Lỗi khi tải nhóm: {e}")
-            QMessageBox.critical(self, "Lỗi", f"Lỗi khi tải danh sách nhóm: {e}")
+            QMessageBox.critical(self, "Lỗi", f"Lỗi kết nối: {str(e)}")
     
     def select_group(self, item):
         """Chọn nhóm để chat"""
@@ -217,7 +256,7 @@ class GroupChatWindow(QDialog):
             print(f"❌ Lỗi khi tải tin nhắn: {e}")
     
     def send_message(self):
-        """Gửi tin nhắn"""
+        """Gửi tin nhắn async - không block UI"""
         if not self.current_group:
             QMessageBox.warning(self, "Lỗi", "Vui lòng chọn nhóm trước")
             return
@@ -226,34 +265,76 @@ class GroupChatWindow(QDialog):
         if not message_content:
             return
         
-        try:
-            request = {
-                "action": "send_group_message",
-                "data": {
-                    "sender_id": self.user_id,
-                    "group_id": self.current_group["group_id"],
-                    "content": message_content
-                }
-            }
+        # Prevent double sending
+        if self.message_sender_thread and self.message_sender_thread.isRunning():
+            return
             
-            response = self.client.send_json(request)
+        # Show sending progress
+        self.show_sending_state()
+        
+        # Prepare request data
+        request_data = {
+            "action": "send_group_message",
+            "data": {
+                "sender_id": self.user_id,
+                "group_id": self.current_group["group_id"],
+                "content": message_content
+            }
+        }
+        
+        # Start async sending
+        self.message_sender_thread = MessageSenderThread(self.client, request_data)
+        self.message_sender_thread.message_sent.connect(self.on_message_sent)
+        self.message_sender_thread.error_occurred.connect(self.on_message_error)
+        self.message_sender_thread.start()
+    
+    def show_sending_state(self):
+        """Hiển thị trạng thái đang gửi"""
+        self.send_progress.setVisible(True)
+        self.message_input.setEnabled(False)
+        self.send_btn.setEnabled(False)
+        self.send_btn.setText("Đang gửi...")
+        
+    def hide_sending_state(self):
+        """Ẩn trạng thái đang gửi"""
+        self.send_progress.setVisible(False)
+        self.message_input.setEnabled(True)
+        self.send_btn.setEnabled(True)
+        self.send_btn.setText("Gửi")
+    
+    def on_message_sent(self, response):
+        """Callback khi gửi tin nhắn thành công"""
+        try:
+            self.hide_sending_state()
+            
             if response and response.get("success"):
+                # Clear input và update UI
+                message_content = self.message_input.text().strip()
                 self.message_input.clear()
-                # Add message to display immediately
+                
+                # Add message to display immediately for better UX
                 message_data = response.get("message_data", {})
                 time_str = message_data.get("time_send", "").split("T")[1].split(".")[0] if message_data.get("time_send") else "Now"
                 message_text = f"[{time_str}] {self.username}: {message_content}"
                 self.messages_area.append(message_text)
                 
-                # Scroll to bottom
+                # Scroll to bottom smoothly
                 scrollbar = self.messages_area.verticalScrollBar()
                 scrollbar.setValue(scrollbar.maximum())
+                
+                # Focus back to input
+                self.message_input.setFocus()
             else:
                 error_msg = response.get("message", "Không thể gửi tin nhắn") if response else "Không nhận được phản hồi từ server"
                 QMessageBox.warning(self, "Lỗi", error_msg)
-                
         except Exception as e:
-            QMessageBox.critical(self, "Lỗi", f"Lỗi khi gửi tin nhắn: {e}")
+            QMessageBox.critical(self, "Lỗi", f"Lỗi xử lý phản hồi: {str(e)}")
+    
+    def on_message_error(self, error_message):
+        """Callback khi có lỗi gửi tin nhắn"""
+        self.hide_sending_state()
+        QMessageBox.warning(self, "Lỗi", error_message)
+        self.message_input.setFocus()
     
     def create_new_group(self):
         """Tạo nhóm mới"""
